@@ -1,0 +1,931 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f6f6f2" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="歯周検査" />
+    <title>歯周組織検査入力</title>
+    <style>
+:root {
+  color-scheme: light;
+  --paper: #f6f6f2;
+  --ink: #17191a;
+  --muted: #66706e;
+  --line: #aeb4b8;
+  --label: #f0f0ef;
+  --tooth-row: #ededeb;
+  --active: #dff2f1;
+  --selected: #d8f0f7;
+  --missing: #5f6b6c;
+  --plaque: #607071;
+  --green: #4d9165;
+  --red: #d94343;
+  --blue: #2369d4;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "YuGothic", "Noto Sans JP", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button {
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto auto;
+  align-content: start;
+  gap: 8px;
+  padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.eyebrow {
+  margin: 0 0 2px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(20px, 3vw, 30px);
+  letter-spacing: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.icon-button {
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  font-size: 26px;
+  font-weight: 900;
+}
+
+.chart-wrap {
+  align-self: start;
+  height: fit-content;
+  min-height: 0;
+  overflow: auto;
+  border: 2px solid #555b60;
+  background: white;
+}
+
+.chart {
+  min-width: 100%;
+  display: grid;
+  grid-template-columns: 82px repeat(16, minmax(36px, 1fr));
+  grid-template-rows: 42px 58px 68px 44px 44px 68px 58px 42px;
+}
+
+.row-label,
+.tooth-label,
+.cell {
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.row-label {
+  display: grid;
+  place-items: center;
+  padding: 0 6px;
+  background: var(--label);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.row-label.pocket {
+  background: var(--tooth-row);
+}
+
+.row-label.mobility {
+  background: var(--tooth-row);
+}
+
+.tooth-label {
+  display: grid;
+  place-items: center;
+  background: var(--tooth-row);
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.cell {
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  display: grid;
+  place-items: stretch;
+  background: white;
+}
+
+.cell.plaque-wrap,
+.cell.pocket-wrap {
+  place-items: center;
+}
+
+.mobility-cell {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.mobility-cell.is-selected,
+.pocket-site.is-selected,
+.plaque-cell.is-selected {
+  background-color: var(--selected);
+}
+
+.mobility-cell.has-value {
+  background: transparent;
+}
+
+.pocket-grid {
+  display: grid;
+  width: 100%;
+  height: 44px;
+}
+
+.pocket-grid.molar {
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+}
+
+.pocket-grid.other {
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+}
+
+.pocket-site {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.pocket-grid.molar .pocket-site {
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.pocket-site.is-ten,
+.pocket-grid.molar .pocket-site.is-ten {
+  font-size: 8px;
+}
+
+.pocket-site:focus-visible,
+.mobility-cell:focus-visible,
+.plaque-site:focus-visible {
+  outline: 3px solid #216f72;
+  outline-offset: -3px;
+  z-index: 2;
+}
+
+.pocket-grid.molar .pocket-site:nth-child(3n),
+.pocket-grid.other .pocket-site:nth-child(2n) {
+  border-right: 0;
+}
+
+.pocket-grid.molar .pocket-site:nth-child(n + 4),
+.pocket-grid.other .pocket-site:nth-child(n + 3) {
+  border-bottom: 0;
+}
+
+.pocket-site.mark-red::after,
+.pocket-site.mark-blue::after {
+  content: "";
+  position: absolute;
+  width: min(18px, 78%);
+  height: min(18px, 78%);
+  border: 2px solid var(--red);
+  border-radius: 50%;
+}
+
+.pocket-site.mark-blue::after {
+  border-color: var(--blue);
+}
+
+.plaque-cell {
+  position: relative;
+  width: min(100%, 58px);
+  aspect-ratio: 1;
+  background:
+    linear-gradient(45deg, transparent calc(50% - 0.75px), var(--line) calc(50% - 0.75px), var(--line) calc(50% + 0.75px), transparent calc(50% + 0.75px)),
+    linear-gradient(-45deg, transparent calc(50% - 0.75px), var(--line) calc(50% - 0.75px), var(--line) calc(50% + 0.75px), transparent calc(50% + 0.75px)),
+    white;
+}
+
+.cell.is-missing,
+.cell.is-missing .mobility-cell,
+.cell.is-missing .pocket-grid,
+.cell.is-missing .pocket-site,
+.cell.is-missing .plaque-cell {
+  background: var(--missing);
+  color: white;
+}
+
+.cell.is-missing .plaque-cell {
+  background:
+    linear-gradient(45deg, transparent calc(50% - 0.75px), rgba(255, 255, 255, 0.35) calc(50% - 0.75px), rgba(255, 255, 255, 0.35) calc(50% + 0.75px), transparent calc(50% + 0.75px)),
+    linear-gradient(-45deg, transparent calc(50% - 0.75px), rgba(255, 255, 255, 0.35) calc(50% - 0.75px), rgba(255, 255, 255, 0.35) calc(50% + 0.75px), transparent calc(50% + 0.75px)),
+    var(--missing);
+}
+
+.plaque-cell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--line);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.plaque-site {
+  position: absolute;
+  inset: 0;
+}
+
+.plaque-site[data-site="buccal"] {
+  clip-path: polygon(0 0, 100% 0, 50% 50%);
+}
+
+.plaque-site[data-site="distal"] {
+  clip-path: polygon(100% 0, 100% 100%, 50% 50%);
+}
+
+.plaque-site[data-site="lingual"] {
+  clip-path: polygon(100% 100%, 0 100%, 50% 50%);
+}
+
+.plaque-site[data-site="mesial"] {
+  clip-path: polygon(0 100%, 0 0, 50% 50%);
+}
+
+.plaque-site.is-on {
+  background: var(--plaque);
+}
+
+.plaque-site.is-on::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(77, 145, 101, 0.35);
+}
+
+.keypad-popover {
+  position: fixed;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  width: min(390px, calc(100vw - 24px));
+  padding: 12px;
+  border: 1px solid #c7ccd0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 18px 50px rgba(23, 25, 26, 0.2);
+  z-index: 10;
+}
+
+.keypad-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.keypad-head strong {
+  display: none;
+}
+
+.keypad-head button {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f7f7f4;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.keypad-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.keypad-grid button,
+.marker-row button,
+.missing-toggle,
+.delete-value {
+  min-height: 52px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.marker-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.marker.red {
+  color: var(--red);
+}
+
+.marker.blue {
+  color: var(--blue);
+}
+
+.delete-value {
+  width: 100%;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.missing-toggle {
+  width: 100%;
+  margin-top: 8px;
+  background: #4f5c5d;
+  color: white;
+  font-size: 18px;
+}
+
+@media (max-height: 780px) {
+  .chart {
+    grid-template-rows: 42px 58px 68px 44px 44px 68px 58px 42px;
+  }
+
+  .row-label {
+    font-size: 16px;
+  }
+
+  .tooth-label,
+  .pocket-site,
+  .mobility-cell {
+    font-size: 16px;
+  }
+
+  .pocket-site {
+    font-size: 13px;
+  }
+
+  .pocket-grid.molar .pocket-site {
+    font-size: 11px;
+  }
+
+  .pocket-site.is-ten,
+  .pocket-grid.molar .pocket-site.is-ten {
+    font-size: 8px;
+  }
+}
+
+@media (max-width: 760px) {
+  .chart {
+    grid-template-columns: 74px repeat(16, minmax(34px, 1fr));
+  }
+
+  .row-label {
+    padding: 0 4px;
+    font-size: 14px;
+  }
+
+  .tooth-label,
+  .mobility-cell {
+    font-size: 15px;
+  }
+
+  .pocket-site {
+    font-size: 12px;
+  }
+
+  .pocket-grid.molar .pocket-site {
+    font-size: 10px;
+  }
+
+  .pocket-site.is-ten,
+  .pocket-grid.molar .pocket-site.is-ten {
+    font-size: 8px;
+  }
+
+  .pocket-site.mark-red::after,
+  .pocket-site.mark-blue::after {
+    width: min(16px, 76%);
+    height: min(16px, 76%);
+  }
+}
+
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">iPad Touch Chart</p>
+          <h1>歯周組織検査入力</h1>
+        </div>
+        <div class="header-actions">
+          <button class="icon-button" id="exportBtn" title="CSVを書き出し" aria-label="CSVを書き出し">↓</button>
+          <button class="icon-button" id="resetBtn" title="全消去" aria-label="全消去">×</button>
+        </div>
+      </header>
+
+      <main class="chart-wrap" aria-label="歯周組織検査表">
+        <section class="chart" id="chart"></section>
+      </main>
+    </div>
+
+    <div class="keypad-popover" id="keypadPopover" hidden>
+      <div class="keypad-head">
+        <strong id="keypadTitle">入力</strong>
+        <button id="closePad" aria-label="閉じる">×</button>
+      </div>
+      <div class="keypad-grid" id="keypadGrid"></div>
+      <div class="marker-row" id="markerRow">
+        <button class="marker red" data-marker="red">赤丸</button>
+        <button class="marker blue" data-marker="blue">青丸</button>
+        <button class="marker clear" data-marker="clear">解除</button>
+      </div>
+      <button class="missing-toggle" id="missingToggle">欠損</button>
+      <button class="delete-value" id="deleteValue">値を消す</button>
+    </div>
+    <script>
+const upperTeeth = [
+  { id: "UL8", number: "8", type: "molar" },
+  { id: "UL7", number: "7", type: "molar" },
+  { id: "UL6", number: "6", type: "molar" },
+  { id: "UL5", number: "5", type: "other" },
+  { id: "UL4", number: "4", type: "other" },
+  { id: "UL3", number: "3", type: "other" },
+  { id: "UL2", number: "2", type: "other" },
+  { id: "UL1", number: "1", type: "other" },
+  { id: "UR1", number: "1", type: "other" },
+  { id: "UR2", number: "2", type: "other" },
+  { id: "UR3", number: "3", type: "other" },
+  { id: "UR4", number: "4", type: "other" },
+  { id: "UR5", number: "5", type: "other" },
+  { id: "UR6", number: "6", type: "molar" },
+  { id: "UR7", number: "7", type: "molar" },
+  { id: "UR8", number: "8", type: "molar" },
+];
+
+const lowerTeeth = [
+  { id: "LL8", number: "8", type: "molar" },
+  { id: "LL7", number: "7", type: "molar" },
+  { id: "LL6", number: "6", type: "molar" },
+  { id: "LL5", number: "5", type: "other" },
+  { id: "LL4", number: "4", type: "other" },
+  { id: "LL3", number: "3", type: "other" },
+  { id: "LL2", number: "2", type: "other" },
+  { id: "LL1", number: "1", type: "other" },
+  { id: "LR1", number: "1", type: "other" },
+  { id: "LR2", number: "2", type: "other" },
+  { id: "LR3", number: "3", type: "other" },
+  { id: "LR4", number: "4", type: "other" },
+  { id: "LR5", number: "5", type: "other" },
+  { id: "LR6", number: "6", type: "molar" },
+  { id: "LR7", number: "7", type: "molar" },
+  { id: "LR8", number: "8", type: "molar" },
+];
+
+const plaqueSites = ["buccal", "distal", "lingual", "mesial"];
+const plaqueLabels = { buccal: "頬側", distal: "遠心", lingual: "舌側", mesial: "近心" };
+const pocketSites = {
+  molar: ["上遠心", "上中央", "上近心", "下遠心", "下中央", "下近心"],
+  other: ["上近心", "上遠心", "下近心", "下遠心"],
+};
+const upperRightToLeft = [...upperTeeth].reverse();
+const lowerRightToLeft = [...lowerTeeth].reverse();
+let selected = null;
+const state = loadState();
+
+const els = {
+  chart: document.getElementById("chart"),
+  exportBtn: document.getElementById("exportBtn"),
+  resetBtn: document.getElementById("resetBtn"),
+  popover: document.getElementById("keypadPopover"),
+  keypadTitle: document.getElementById("keypadTitle"),
+  keypadGrid: document.getElementById("keypadGrid"),
+  markerRow: document.getElementById("markerRow"),
+  missingToggle: document.getElementById("missingToggle"),
+  deleteValue: document.getElementById("deleteValue"),
+  closePad: document.getElementById("closePad"),
+};
+
+function defaultState() {
+  return {
+    pocket: {},
+    mobility: {},
+    plaque: {},
+    missing: {},
+  };
+}
+
+function loadState() {
+  return defaultState();
+}
+
+function saveState() {
+  // Patient data is intentionally kept only on the current screen.
+}
+
+function addLabel(text, row, className = "") {
+  const label = document.createElement("div");
+  label.className = `row-label ${className}`.trim();
+  label.style.gridColumn = "1";
+  label.style.gridRow = String(row);
+  label.textContent = text;
+  els.chart.appendChild(label);
+}
+
+function addToothLabels(teeth, row, jawText) {
+  addLabel(jawText, row);
+  teeth.forEach((tooth, index) => {
+    const cell = document.createElement("div");
+    cell.className = "tooth-label";
+    cell.style.gridColumn = String(index + 2);
+    cell.style.gridRow = String(row);
+    cell.textContent = tooth.number;
+    els.chart.appendChild(cell);
+  });
+}
+
+function addMobilityRow(teeth, row, arch) {
+  addLabel("動揺度", row, "mobility");
+  teeth.forEach((tooth, index) => {
+    const wrap = addCell(index, row);
+    wrap.classList.toggle("is-missing", isMissing(arch, tooth.id));
+    const button = document.createElement("button");
+    const key = `${arch}:${tooth.id}`;
+    button.className = "mobility-cell";
+    button.dataset.kind = "mobility";
+    button.dataset.key = key;
+    button.dataset.tooth = tooth.id;
+    button.textContent = state.mobility[key] ?? "";
+    button.classList.toggle("has-value", state.mobility[key] !== undefined);
+    button.classList.toggle("is-selected", selected?.kind === "mobility" && selected.key === key);
+    button.addEventListener("click", () => openPad({ kind: "mobility", key, tooth, label: `${archLabel(arch)}${tooth.number} 動揺度` }));
+    wrap.appendChild(button);
+  });
+}
+
+function addPlaqueRow(teeth, row, arch) {
+  addLabel("プラーク", row);
+  teeth.forEach((tooth, index) => {
+    const wrap = addCell(index, row);
+    wrap.classList.add("plaque-wrap");
+    wrap.classList.toggle("is-missing", isMissing(arch, tooth.id));
+    const plaque = document.createElement("div");
+    const key = `${arch}:${tooth.id}`;
+    plaque.className = "plaque-cell";
+    plaqueSites.forEach((site) => {
+      const button = document.createElement("button");
+      button.className = "plaque-site";
+      button.dataset.kind = "plaque";
+      button.dataset.key = `${key}:${site}`;
+      button.dataset.site = site;
+      button.title = plaqueLabels[site];
+      button.classList.toggle("is-on", Boolean(state.plaque[key]?.[site]));
+      button.addEventListener("click", () => {
+        if (isMissing(arch, tooth.id)) return;
+        state.plaque[key] = state.plaque[key] || {};
+        state.plaque[key][site] = !state.plaque[key][site];
+        saveState();
+        render();
+        focusNext("plaque", `${key}:${site}`);
+      });
+      plaque.appendChild(button);
+    });
+    wrap.appendChild(plaque);
+  });
+}
+
+function addPocketRow(teeth, row, arch) {
+  addLabel("ポケット", row, "pocket");
+  teeth.forEach((tooth, index) => {
+    const wrap = addCell(index, row);
+    wrap.classList.add("pocket-wrap");
+    wrap.classList.toggle("is-missing", isMissing(arch, tooth.id));
+    const grid = document.createElement("div");
+    grid.className = `pocket-grid ${tooth.type}`;
+    pocketSites[tooth.type].forEach((site) => {
+      const key = `${arch}:${tooth.id}:${site}`;
+      const entry = state.pocket[key] || {};
+      const button = document.createElement("button");
+      button.className = "pocket-site";
+      button.dataset.kind = "pocket";
+      button.dataset.key = key;
+      button.textContent = entry.value ?? "";
+      button.title = site;
+      button.classList.toggle("is-selected", selected?.kind === "pocket" && selected.key === key);
+      button.classList.toggle("is-ten", Number(entry.value) === 10);
+      if (entry.marker) button.classList.add(`mark-${entry.marker}`);
+      button.addEventListener("click", () => openPad({ kind: "pocket", key, tooth, site, label: `${archLabel(arch)}${tooth.number} ${site}` }));
+      grid.appendChild(button);
+    });
+    wrap.appendChild(grid);
+  });
+}
+
+function addCell(index, row) {
+  const cell = document.createElement("div");
+  cell.className = "cell";
+  cell.style.gridColumn = String(index + 2);
+  cell.style.gridRow = String(row);
+  els.chart.appendChild(cell);
+  return cell;
+}
+
+function archLabel(arch) {
+  return arch === "upper" ? "上顎" : "下顎";
+}
+
+function render() {
+  els.chart.innerHTML = "";
+  addMobilityRow(upperTeeth, 1, "upper");
+  addPlaqueRow(upperTeeth, 2, "upper");
+  addPocketRow(upperTeeth, 3, "upper");
+  addToothLabels(upperTeeth, 4, "上顎");
+  addToothLabels(lowerTeeth, 5, "下顎");
+  addPocketRow(lowerTeeth, 6, "lower");
+  addPlaqueRow(lowerTeeth, 7, "lower");
+  addMobilityRow(lowerTeeth, 8, "lower");
+}
+
+function isMissing(arch, toothId) {
+  return Boolean(state.missing?.[`${arch}:${toothId}`]);
+}
+
+function clearToothData(arch, toothId) {
+  delete state.mobility[`${arch}:${toothId}`];
+  Object.keys(state.pocket).forEach((key) => {
+    if (key.startsWith(`${arch}:${toothId}:`)) delete state.pocket[key];
+  });
+  delete state.plaque[`${arch}:${toothId}`];
+}
+
+function setMissingForSelection(shouldBeMissing) {
+  if (!selected?.tooth) return;
+  const arch = selected.key.split(":")[0];
+  const missingKey = `${arch}:${selected.tooth.id}`;
+  if (shouldBeMissing) {
+    state.missing[missingKey] = true;
+    clearToothData(arch, selected.tooth.id);
+  } else {
+    delete state.missing[missingKey];
+  }
+  saveState();
+  closePad();
+  render();
+}
+
+function topSites(tooth) {
+  return pocketSites[tooth.type].filter((site) => site.startsWith("上"));
+}
+
+function bottomSites(tooth) {
+  return pocketSites[tooth.type].filter((site) => site.startsWith("下"));
+}
+
+function pocketSequence() {
+  return [
+    ...upperRightToLeft.flatMap((tooth) => [...bottomSites(tooth)].reverse().map((site) => `upper:${tooth.id}:${site}`)),
+    ...upperTeeth.flatMap((tooth) => topSites(tooth).map((site) => `upper:${tooth.id}:${site}`)),
+    ...lowerRightToLeft.flatMap((tooth) => [...bottomSites(tooth)].reverse().map((site) => `lower:${tooth.id}:${site}`)),
+    ...lowerTeeth.flatMap((tooth) => topSites(tooth).map((site) => `lower:${tooth.id}:${site}`)),
+  ];
+}
+
+function mobilitySequence() {
+  return [
+    ...upperRightToLeft.map((tooth) => `upper:${tooth.id}`),
+    ...lowerRightToLeft.map((tooth) => `lower:${tooth.id}`),
+  ];
+}
+
+function plaqueSequence() {
+  return [
+    ...upperTeeth.flatMap((tooth) => plaqueSites.map((site) => `upper:${tooth.id}:${site}`)),
+    ...lowerTeeth.flatMap((tooth) => plaqueSites.map((site) => `lower:${tooth.id}:${site}`)),
+  ];
+}
+
+function sequenceFor(kind) {
+  const sequence = kind === "pocket" ? pocketSequence() : kind === "mobility" ? mobilitySequence() : plaqueSequence();
+  return sequence.filter((key) => {
+    const [arch, toothId] = key.split(":");
+    return !isMissing(arch, toothId);
+  });
+}
+
+function keyToSelection(kind, key) {
+  if (kind === "mobility") {
+    const [arch, toothId] = key.split(":");
+    const tooth = [...upperTeeth, ...lowerTeeth].find((item) => item.id === toothId);
+    return { kind, key, tooth, label: `${archLabel(arch)}${tooth.number} 動揺度` };
+  }
+  if (kind === "pocket") {
+    const [arch, toothId, site] = key.split(":");
+    const tooth = [...upperTeeth, ...lowerTeeth].find((item) => item.id === toothId);
+    return { kind, key, tooth, site, label: `${archLabel(arch)}${tooth.number} ${site}` };
+  }
+  return null;
+}
+
+function nextKey(kind, key) {
+  const sequence = sequenceFor(kind);
+  const index = sequence.indexOf(key);
+  if (index < 0 || index >= sequence.length - 1) return null;
+  return sequence[index + 1];
+}
+
+function focusNext(kind, key) {
+  const next = nextKey(kind, key);
+  if (!next) return;
+  requestAnimationFrame(() => {
+    const button = document.querySelector(`[data-kind="${kind}"][data-key="${next}"]`);
+    button?.focus();
+    button?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  });
+}
+
+function openNextPad(kind, key) {
+  const next = nextKey(kind, key);
+  if (!next) {
+    closePad();
+    return;
+  }
+  requestAnimationFrame(() => {
+    openPad(keyToSelection(kind, next));
+    document.querySelector(`[data-kind="${kind}"][data-key="${next}"]`)?.focus();
+  });
+}
+
+function openPad(nextSelected) {
+  selected = nextSelected;
+  render();
+  els.keypadTitle.textContent = nextSelected.label;
+  els.markerRow.hidden = nextSelected.kind !== "pocket";
+  els.missingToggle.hidden = nextSelected.kind === "mobility";
+  const arch = nextSelected.key.split(":")[0];
+  const missing = isMissing(arch, nextSelected.tooth.id);
+  els.missingToggle.textContent = missing ? "欠損解除" : "欠損";
+  renderKeypad(nextSelected.kind === "mobility" ? [0, 1, 2, 3] : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  els.popover.hidden = false;
+}
+
+function renderKeypad(values) {
+  els.keypadGrid.innerHTML = "";
+  values.forEach((value) => {
+    const button = document.createElement("button");
+    button.textContent = value;
+    button.addEventListener("click", () => setValue(value));
+    els.keypadGrid.appendChild(button);
+  });
+}
+
+function setValue(value) {
+  if (!selected) return;
+  const current = selected;
+  const [arch, toothId] = selected.key.split(":");
+  if (isMissing(arch, toothId)) return;
+  if (selected.kind === "mobility") {
+    state.mobility[selected.key] = value;
+  } else {
+    const previous = state.pocket[selected.key] || {};
+    state.pocket[selected.key] = { value, marker: previous.marker || null };
+  }
+  saveState();
+  render();
+  openNextPad(current.kind, current.key);
+}
+
+function setMarker(marker) {
+  if (!selected || selected.kind !== "pocket") return;
+  const [arch, toothId] = selected.key.split(":");
+  if (isMissing(arch, toothId)) return;
+  const previous = state.pocket[selected.key] || {};
+  state.pocket[selected.key] = { ...previous, marker: marker === "clear" ? null : marker };
+  saveState();
+  render();
+}
+
+function deleteSelectedValue() {
+  if (!selected) return;
+  if (selected.kind === "mobility") {
+    delete state.mobility[selected.key];
+  } else {
+    delete state.pocket[selected.key];
+  }
+  saveState();
+  closePad();
+  render();
+}
+
+function closePad() {
+  selected = null;
+  els.popover.hidden = true;
+}
+
+function exportCsv() {
+  const rows = [["項目", "顎", "歯", "部位", "値", "マーカー"]];
+  for (const arch of ["upper", "lower"]) {
+    const teeth = arch === "upper" ? upperTeeth : lowerTeeth;
+    teeth.forEach((tooth) => {
+      const mobilityKey = `${arch}:${tooth.id}`;
+      rows.push(["動揺度", archLabel(arch), tooth.number, "", state.mobility[mobilityKey] ?? "", ""]);
+      pocketSites[tooth.type].forEach((site) => {
+        const key = `${arch}:${tooth.id}:${site}`;
+        const entry = state.pocket[key] || {};
+        rows.push(["ポケット", archLabel(arch), tooth.number, site, entry.value ?? "", entry.marker || ""]);
+      });
+      const plaqueKey = `${arch}:${tooth.id}`;
+      plaqueSites.forEach((site) => {
+        rows.push(["プラーク", archLabel(arch), tooth.number, plaqueLabels[site], state.plaque[plaqueKey]?.[site] ? "1" : "0", ""]);
+      });
+    });
+  }
+  const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n");
+  const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `歯周組織検査_${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+els.closePad.addEventListener("click", closePad);
+els.deleteValue.addEventListener("click", deleteSelectedValue);
+els.markerRow.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-marker]");
+  if (button) setMarker(button.dataset.marker);
+});
+els.missingToggle.addEventListener("click", () => {
+  if (!selected?.tooth) return;
+  const arch = selected.key.split(":")[0];
+  setMissingForSelection(!isMissing(arch, selected.tooth.id));
+});
+els.resetBtn.addEventListener("click", () => {
+  if (confirm("入力内容をすべて消去しますか？")) {
+    Object.assign(state, defaultState());
+    saveState();
+    closePad();
+    render();
+  }
+});
+els.exportBtn.addEventListener("click", exportCsv);
+
+render();
+
+    </script>
+  </body>
+</html>
