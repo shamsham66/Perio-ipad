@@ -86,7 +86,8 @@ h1 {
   gap: 8px;
 }
 
-.icon-button {
+.icon-button,
+.copy-button {
   width: 48px;
   height: 48px;
   border: 1px solid var(--line);
@@ -94,6 +95,13 @@ h1 {
   background: white;
   font-size: 26px;
   font-weight: 900;
+}
+
+.copy-button {
+  width: auto;
+  min-width: 82px;
+  padding: 0 14px;
+  font-size: 18px;
 }
 
 .chart-wrap {
@@ -474,7 +482,7 @@ h1 {
           <h1>歯周組織検査入力</h1>
         </div>
         <div class="header-actions">
-          <button class="icon-button" id="exportBtn" title="CSVを書き出し" aria-label="CSVを書き出し">↓</button>
+          <button class="copy-button" id="copyBtn" title="入力内容をコピー" aria-label="入力内容をコピー">コピー</button>
           <button class="icon-button" id="resetBtn" title="全消去" aria-label="全消去">×</button>
         </div>
       </header>
@@ -550,7 +558,7 @@ const state = loadState();
 
 const els = {
   chart: document.getElementById("chart"),
-  exportBtn: document.getElementById("exportBtn"),
+  copyBtn: document.getElementById("copyBtn"),
   resetBtn: document.getElementById("resetBtn"),
   popover: document.getElementById("keypadPopover"),
   keypadTitle: document.getElementById("keypadTitle"),
@@ -876,31 +884,66 @@ function closePad() {
   els.popover.hidden = true;
 }
 
-function exportCsv() {
-  const rows = [["項目", "顎", "歯", "部位", "値", "マーカー"]];
+function valueOrBlank(value) {
+  return value === undefined || value === null || value === "" ? "" : String(value);
+}
+
+function pocketText(arch, tooth) {
+  return pocketSites[tooth.type]
+    .map((site) => {
+      const entry = state.pocket[`${arch}:${tooth.id}:${site}`] || {};
+      const marker = entry.marker === "red" ? "赤丸" : entry.marker === "blue" ? "青丸" : "";
+      const value = valueOrBlank(entry.value);
+      return `${site}:${value}${marker ? `(${marker})` : ""}`;
+    })
+    .join(" ");
+}
+
+function plaqueText(arch, tooth) {
+  const plaque = state.plaque[`${arch}:${tooth.id}`] || {};
+  const onSites = plaqueSites.filter((site) => plaque[site]).map((site) => plaqueLabels[site]);
+  return onSites.length ? onSites.join("/") : "";
+}
+
+function buildCopyText() {
+  const lines = ["歯周組織検査"];
   for (const arch of ["upper", "lower"]) {
     const teeth = arch === "upper" ? upperTeeth : lowerTeeth;
+    lines.push(`【${archLabel(arch)}】`);
     teeth.forEach((tooth) => {
+      const toothName = `${archLabel(arch)}${tooth.number}`;
+      if (isMissing(arch, tooth.id)) {
+        lines.push(`${toothName}: 欠損`);
+        return;
+      }
       const mobilityKey = `${arch}:${tooth.id}`;
-      rows.push(["動揺度", archLabel(arch), tooth.number, "", state.mobility[mobilityKey] ?? "", ""]);
-      pocketSites[tooth.type].forEach((site) => {
-        const key = `${arch}:${tooth.id}:${site}`;
-        const entry = state.pocket[key] || {};
-        rows.push(["ポケット", archLabel(arch), tooth.number, site, entry.value ?? "", entry.marker || ""]);
-      });
-      const plaqueKey = `${arch}:${tooth.id}`;
-      plaqueSites.forEach((site) => {
-        rows.push(["プラーク", archLabel(arch), tooth.number, plaqueLabels[site], state.plaque[plaqueKey]?.[site] ? "1" : "0", ""]);
-      });
+      lines.push(
+        `${toothName}: 動揺度${valueOrBlank(state.mobility[mobilityKey]) || "-"} / ポケット ${pocketText(arch, tooth)} / プラーク ${plaqueText(arch, tooth) || "-"}`
+      );
     });
   }
-  const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n");
-  const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `歯周組織検査_${new Date().toISOString().slice(0, 10)}.csv`;
-  link.click();
-  URL.revokeObjectURL(link.href);
+  return lines.join("\n");
+}
+
+async function copyChartText() {
+  const text = buildCopyText();
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand("copy");
+    area.remove();
+  }
+  const previous = els.copyBtn.textContent;
+  els.copyBtn.textContent = "コピー済";
+  setTimeout(() => {
+    els.copyBtn.textContent = previous;
+  }, 1200);
 }
 
 els.closePad.addEventListener("click", closePad);
@@ -922,7 +965,7 @@ els.resetBtn.addEventListener("click", () => {
     render();
   }
 });
-els.exportBtn.addEventListener("click", exportCsv);
+els.copyBtn.addEventListener("click", copyChartText);
 
 render();
 
